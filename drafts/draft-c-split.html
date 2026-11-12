@@ -108,19 +108,15 @@
   .svc h3 { font-size: clamp(21px, 2vw, 28px); font-weight: 700; letter-spacing: -.03em; }
   .svc p { font-size: 15px; opacity: .7; }
 
-  /* work : shapes taken from the letterforms (arch, circle, bowl) */
+  /* work : plain rectangles with a slight radius, second column offset */
   .work { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
   .work a { display: block; }
   .work a:nth-child(even) { margin-top: clamp(40px, 7vw, 110px); }
-  .work figure { overflow: hidden; background: #dcdce6; aspect-ratio: 4 / 5; }
-  .work a:nth-child(1) figure { border-radius: 999px 999px var(--r) var(--r); }
-  .work a:nth-child(2) figure { border-radius: 50%; aspect-ratio: 1; }
-  .work a:nth-child(3) figure { border-radius: 50%; aspect-ratio: 1; }
-  .work a:nth-child(4) figure { border-radius: var(--r) var(--r) 999px 999px; }
+  .work figure { overflow: hidden; background: #dcdce6; aspect-ratio: 6 / 5; border-radius: 16px; }
   .work img { width: 100%; height: 100%; object-fit: cover; transition: transform .7s cubic-bezier(.2,.7,.2,1); }
   .work a:hover img { transform: scale(1.06); }
-  .work h3 { margin-top: 16px; font-size: 18px; font-weight: 700; letter-spacing: -.02em; text-align: center; }
-  .work span { display: block; font-size: 14px; color: var(--muted); text-align: center; }
+  .work h3 { margin-top: 16px; font-size: 18px; font-weight: 700; letter-spacing: -.02em; }
+  .work span { display: block; font-size: 14px; color: var(--muted); }
   .note { margin-top: 36px; font-size: 13px; color: var(--muted); }
 
   /* fields */
