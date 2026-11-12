@@ -27,7 +27,7 @@
   a { color: inherit; text-decoration: none; }
   img { display: block; max-width: 100%; }
 
-  .layout { display: grid; grid-template-columns: minmax(360px, 44%) 1fr; }
+  .layout { display: grid; grid-template-columns: minmax(360px, 40%) 1fr; }
 
   /* ── left : fixed blue stage. the title and the ring change as the right side scrolls ── */
   .stage {
@@ -42,23 +42,19 @@
   .ring {
     position: absolute; width: 86%; aspect-ratio: 1; border-radius: 50%;
     border: clamp(40px, 6vw, 92px) solid rgba(255,255,255,.14);
-    left: var(--x, 42%); top: var(--y, -18%); transform: scale(var(--s, 1));
-    transition: left 1s cubic-bezier(.3,.7,.2,1), top 1s cubic-bezier(.3,.7,.2,1), transform 1s cubic-bezier(.3,.7,.2,1), border-radius 1s;
+    left: 42%; top: -18%; will-change: transform, left, top;
   }
-  .stage[data-step="1"] .ring { --x: -40%; --y: 30%; --s: 1.15; }
-  .stage[data-step="2"] .ring { --x: 30%; --y: 44%; --s: .8; }
-  .stage[data-step="3"] .ring { --x: -30%; --y: -30%; --s: 1.3; }
-  .stage[data-step="4"] .ring { --x: 46%; --y: 12%; --s: .65; }
-  .stage[data-step="5"] .ring { --x: 7%; --y: 14%; --s: 1; }
 
   .titles { position: relative; z-index: 2; flex: 1; }
   .titles > div {
     position: absolute; left: 0; right: 0; bottom: clamp(24px, 4vh, 48px);
-    opacity: 0; transform: translateY(18px); transition: opacity .5s, transform .5s; pointer-events: none;
+    opacity: 0; transform: translateY(28px); pointer-events: none;
+    transition: opacity .6s ease, transform .8s cubic-bezier(.2,.7,.2,1);
   }
-  .titles > div.on { opacity: 1; transform: none; }
+  .titles > div.up { transform: translateY(-28px); }
+  .titles > div.on { opacity: 1; transform: none; transition-delay: .12s; }
   .titles small { display: block; font-size: 13px; font-weight: 600; letter-spacing: .08em; opacity: .75; margin-bottom: 16px; }
-  .titles strong { display: block; font-size: clamp(34px, 4.5vw, 70px); font-weight: 700; line-height: 1.12; letter-spacing: -.045em; }
+  .titles strong { display: block; font-size: clamp(32px, 3.6vw, 60px); font-weight: 700; line-height: 1.12; letter-spacing: -.045em; }
 
   .foot { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .dots { display: flex; gap: 9px; align-items: center; }
@@ -273,24 +269,57 @@
 </div>
 
 <script>
-  // Swap the left title, ring position and active dot to match the section in view.
+  // The ring follows the scroll position continuously (eased), so it glides
+  // instead of jumping; the title and active dot switch at each section's midpoint.
   (function () {
     var stage = document.getElementById('stage');
+    var ring = stage.querySelector('.ring');
     var titles = stage.querySelectorAll('.titles > div');
     var dots = stage.querySelectorAll('.dots a');
     var sections = document.querySelectorAll('.flow section');
-    function set(i) {
-      stage.dataset.step = i;
-      titles.forEach(function (t, n) { t.classList.toggle('on', n === i); });
+    // ring left %, top %, scale for each section
+    var keys = [[42, -18, 1], [-40, 30, 1.15], [30, 44, .8], [-30, -30, 1.3], [46, 12, .65], [7, 14, 1]];
+    var desktop = window.matchMedia('(min-width: 861px)');
+    var still = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var cur = keys[0].slice(), active = -1, raf = 0;
+
+    function setActive(i) {
+      if (i === active) return;
+      active = i;
+      titles.forEach(function (t, n) { t.classList.toggle('on', n === i); t.classList.toggle('up', n < i); });
       dots.forEach(function (d, n) { d.classList.toggle('on', n === i); });
     }
-    if (!('IntersectionObserver' in window)) return;
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (e.isIntersecting) set(Array.prototype.indexOf.call(sections, e.target));
-      });
-    }, { rootMargin: '-50% 0px -50% 0px' });
-    sections.forEach(function (s) { io.observe(s); });
+    function position() {            // fractional section index at the viewport centre
+      var c = window.scrollY + window.innerHeight / 2, mids = [];
+      sections.forEach(function (s) { mids.push(s.offsetTop + s.offsetHeight / 2); });
+      if (c <= mids[0]) return 0;
+      for (var i = 0; i < mids.length - 1; i++)
+        if (c < mids[i + 1]) return i + (c - mids[i]) / (mids[i + 1] - mids[i]);
+      return mids.length - 1;
+    }
+    function paint() {
+      ring.style.left = cur[0] + '%'; ring.style.top = cur[1] + '%';
+      ring.style.transform = 'scale(' + cur[2] + ')';
+    }
+    function tick() {
+      raf = 0;
+      if (!desktop.matches) { ring.style.cssText = ''; setActive(0); return; }
+      var f = position(), i = Math.floor(f), t = f - i, j = Math.min(i + 1, keys.length - 1);
+      t = t * t * (3 - 2 * t);
+      setActive(Math.round(f));
+      var moving = false;
+      for (var k = 0; k < 3; k++) {
+        var target = keys[i][k] + (keys[j][k] - keys[i][k]) * t;
+        var d = target - cur[k];
+        if (still.matches || Math.abs(d) < .02) cur[k] = target; else { cur[k] += d * .09; moving = true; }
+      }
+      paint();
+      if (moving) request();
+    }
+    function request() { if (!raf) raf = requestAnimationFrame(tick); }
+    window.addEventListener('scroll', request, { passive: true });
+    window.addEventListener('resize', request);
+    tick();
   })();
 </script>
 
